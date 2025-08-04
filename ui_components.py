@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
-from config import FONT, COLPAD, PUNCT_PRESETS, WORD_PRESETS, FEEDBACK_TEMPLATES
+from config import FONT, COLPAD, CATEGORY_PRESETS, NOISE_PRESETS, PUNCT_PRESETS, SPELL_PRESETS, WORD_PRESETS, FEEDBACK_TEMPLATES
 from data_manager import DataManager
 from feedback_generator import FeedbackGenerator
 
@@ -56,20 +56,14 @@ class QAFeedbackApp:
 
         # Sol sütun
         r0 = 0
-        r0 = self._pair_issue(form, r0, 0, "CATEGORY issue?",
-                              self.data_manager.vars["cat_issue"],
-                              self.data_manager.vars["cat_wrong"],
-                              self.data_manager.vars["cat_corr"],
-                              self.data_manager.vars["cat_note"])
-        r0 = self._pair_issue(form, r0, 0, "NOISE LEVEL issue?",
-                              self.data_manager.vars["noise_issue"],
-                              None, None, self.data_manager.vars["noise_note"])
+        r0 = self._issue_section(form, r0, 0, "Category Issues", "category", CATEGORY_PRESETS)
+        r0 = self._issue_section(form, r0, 0, "Noise Level Issues", "noise", NOISE_PRESETS)
 
         # Orta sütun
         r1 = 0
-        r1 = self._punct_section(form, r1, 1)
-        r1 = self._list_section(form, r1, 1, "Spelling Issues", "spell")
-        r1 = self._word_issues_section(form, r1, 1)
+        r1 = self._issue_section(form, r1, 1, "Punctuation Issues", "punct", PUNCT_PRESETS)
+        r1 = self._issue_section(form, r1, 1, "Spelling Issues", "spell", SPELL_PRESETS)
+        r1 = self._issue_section(form, r1, 1, "Word Issues", "word_issues", WORD_PRESETS)
 
         # Sağ sütun
         r2 = 0
@@ -94,78 +88,43 @@ class QAFeedbackApp:
 
         self._summary_section(form, max_rows + 1)
 
-    def _pair_issue(self, parent, row, col, title, issue_var, wrong_var, corr_var, note_var):
+    def _issue_section(self, parent, row, col, title, key, presets):
         lf = ttk.LabelFrame(parent, text=title, padding=4)
-        lf.grid(row=row, column=col, sticky="ew",
-                padx=(0, COLPAD) if col == 0 else (COLPAD, 0), pady=3)
-        lf.columnconfigure(1, weight=1)
-        if wrong_var and corr_var:
-            lf.columnconfigure(3, weight=1)
-        lf.columnconfigure(5, weight=2)
-
-        ttk.Radiobutton(lf, text="Yes", value="Yes", variable=issue_var,
-                        command=lambda: self._toggle_pair(issue_var, w_ent, c_ent, n_ent)).grid(row=0, column=0, sticky="w")
-        ttk.Radiobutton(lf, text="No", value="No", variable=issue_var,
-                        command=lambda: self._toggle_pair(issue_var, w_ent, c_ent, n_ent)).grid(row=0, column=1, sticky="w")
-
-        row_idx = 1
-        if wrong_var and corr_var:
-            ttk.Label(lf, text="Wrong:").grid(row=row_idx, column=0, sticky="e", padx=2)
-            w_ent = ttk.Entry(lf, textvariable=wrong_var, width=15)
-            w_ent.grid(row=row_idx, column=1, sticky="ew", padx=2)
-            ttk.Label(lf, text="Correct:").grid(row=row_idx, column=2, sticky="e", padx=2)
-            c_ent = ttk.Entry(lf, textvariable=corr_var, width=15)
-            c_ent.grid(row=row_idx, column=3, sticky="ew", padx=2)
-            row_idx += 1
-        else:
-            w_ent = c_ent = None
-
-        ttk.Label(lf, text="Note:").grid(row=row_idx, column=0, sticky="e", padx=2)
-        n_ent = ttk.Entry(lf, textvariable=note_var)
-        n_ent.grid(row=row_idx, column=1, columnspan=3 if wrong_var else 5, sticky="ew", padx=2)
-
-        self._toggle_pair(issue_var, w_ent, c_ent, n_ent)
-        return row + 1
-
-    @staticmethod
-    def _toggle_pair(issue_var, wrong_ent, corr_ent, note_ent):
-        if issue_var.get() == "Yes":
-            if wrong_ent:
-                wrong_ent.config(state="normal")
-            if corr_ent:
-                corr_ent.config(state="normal")
-            note_ent.config(state="normal")
-        else:
-            if wrong_ent:
-                wrong_ent.config(state="disabled")
-                wrong_ent.delete(0, tk.END)
-            if corr_ent:
-                corr_ent.config(state="disabled")
-                corr_ent.delete(0, tk.END)
-            note_ent.config(state="disabled")
-            note_ent.delete(0, tk.END)
-
-    def _punct_section(self, parent, row, col):
-        lf = ttk.LabelFrame(parent, text="Punctuation Issues", padding=4)
         lf.grid(row=row, column=col, sticky="ew",
                 padx=(0, COLPAD) if col == 0 else (COLPAD, 0), pady=3)
         lf.columnconfigure(0, weight=1)
 
+        issue_var = self.data_manager.vars[f"{key}_issue"]
+        count_var = self.data_manager.vars[f"{key}_count"]
         word_var = tk.StringVar()
-        preset_var = tk.StringVar(value=PUNCT_PRESETS[0])
+        preset_var = tk.StringVar(value=presets[0])
         detail_var = tk.StringVar()
 
+        # Evet/Hayır ve Tek/Çoklu seçim
+        issue_frame = ttk.Frame(lf)
+        issue_frame.grid(row=0, column=0, sticky="ew")
+        ttk.Radiobutton(issue_frame, text="Yes", value="Yes", variable=issue_var,
+                        command=lambda: self._toggle_issue(issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var)).pack(side="left")
+        ttk.Radiobutton(issue_frame, text="No", value="No", variable=issue_var,
+                        command=lambda: self._toggle_issue(issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var)).pack(side="left", padx=10)
+        ttk.Radiobutton(issue_frame, text="Single", value="Single", variable=count_var,
+                        command=lambda: self._toggle_count(count_var, word_frame, cb, detail_entry, lb)).pack(side="left")
+        ttk.Radiobutton(issue_frame, text="Multiple", value="Multiple", variable=count_var,
+                        command=lambda: self._toggle_count(count_var, word_frame, cb, detail_entry, lb)).pack(side="left")
+
+        # Kelime girişi ve ekleme butonu
         word_frame = ttk.Frame(lf)
-        word_frame.grid(row=0, column=0, sticky="ew")
+        word_frame.grid(row=1, column=0, sticky="ew")
         word_frame.columnconfigure(0, weight=1)
         ttk.Entry(word_frame, textvariable=word_var).pack(side="left", fill="x", expand=True)
         ttk.Button(word_frame, text="Add",
-                   command=lambda: self.data_manager.add_punct(word_var, preset_var, detail_var, lb)).pack(side="right", padx=(4,0))
+                   command=lambda: self.data_manager.add_issue(word_var, preset_var, detail_var, lb, key)).pack(side="right", padx=(4,0))
 
-        cb = ttk.Combobox(lf, values=PUNCT_PRESETS, textvariable=preset_var, state="readonly")
-        cb.grid(row=1, column=0, sticky="ew", pady=2)
+        # Hazır seçenekler
+        cb = ttk.Combobox(lf, values=presets, textvariable=preset_var, state="readonly")
+        cb.grid(row=2, column=0, sticky="ew", pady=2)
         detail_entry = ttk.Entry(lf, textvariable=detail_var)
-        detail_entry.grid(row=2, column=0, sticky="ew")
+        detail_entry.grid(row=3, column=0, sticky="ew")
         detail_entry.grid_remove()
 
         def preset_changed(*_):
@@ -179,75 +138,37 @@ class QAFeedbackApp:
         cb.bind("<<ComboboxSelected>>", preset_changed)
         self._create_tooltip(cb, preset_var)
 
+        # Hata listesi
         lb = tk.Listbox(lf, height=3)
-        lb.grid(row=3, column=0, sticky="ew", pady=2)
-        lb.bind("<Double-1>", lambda e: self.data_manager.delete_from_list(lb, self.data_manager.lists["punct"]))
-
-        return row + 1
-
-    def _word_issues_section(self, parent, row, col):
-        lf = ttk.LabelFrame(parent, text="Word Issues", padding=4)
-        lf.grid(row=row, column=col, sticky="ew",
-                padx=(0, COLPAD) if col == 0 else (COLPAD, 0), pady=3)
-        lf.columnconfigure(0, weight=1)
-
-        word_var = tk.StringVar()
-        preset_var = tk.StringVar(value=WORD_PRESETS[0])
-        detail_var = tk.StringVar()
-
-        word_frame = ttk.Frame(lf)
-        word_frame.grid(row=0, column=0, sticky="ew")
-        word_frame.columnconfigure(0, weight=1)
-        ttk.Entry(word_frame, textvariable=word_var).pack(side="left", fill="x", expand=True)
-        ttk.Button(word_frame, text="Add",
-                   command=lambda: self.data_manager.add_word_issue(word_var, preset_var, detail_var, lb)).pack(side="right", padx=(4,0))
-
-        cb = ttk.Combobox(lf, values=WORD_PRESETS, textvariable=preset_var, state="readonly")
-        cb.grid(row=1, column=0, sticky="ew", pady=2)
-        detail_entry = ttk.Entry(lf, textvariable=detail_var)
-        detail_entry.grid(row=2, column=0, sticky="ew")
-        detail_entry.grid_remove()
-
-        def preset_changed(*_):
-            if preset_var.get() == "Custom (write below)":
-                detail_entry.grid()
-                detail_entry.focus_set()
-            else:
-                detail_entry.grid_remove()
-                detail_var.set("")
-
-        cb.bind("<<ComboboxSelected>>", preset_changed)
-        self._create_tooltip(cb, preset_var)
-
-        lb = tk.Listbox(lf, height=3)
-        lb.grid(row=3, column=0, sticky="ew", pady=2)
-        lb.bind("<Double-1>", lambda e: self.data_manager.delete_from_list(lb, self.data_manager.lists["word_issues"]))
-
-        return row + 1
-
-    def _list_section(self, parent, row, col, title, key):
-        lf = ttk.LabelFrame(parent, text=title, padding=4)
-        lf.grid(row=row, column=col, sticky="ew",
-                padx=(0, COLPAD) if col == 0 else (COLPAD, 0), pady=3)
-        lf.columnconfigure(0, weight=1)
-
-        word_var = tk.StringVar()
-        detail_var = tk.StringVar()
-
-        entry_frame = ttk.Frame(lf)
-        entry_frame.grid(row=0, column=0, sticky="ew")
-        entry_frame.columnconfigure(0, weight=2)
-        entry_frame.columnconfigure(1, weight=1)
-        ttk.Entry(entry_frame, textvariable=word_var).grid(row=0, column=0, sticky="ew", padx=(0,2))
-        ttk.Entry(entry_frame, textvariable=detail_var).grid(row=0, column=1, sticky="ew", padx=(2,2))
-        ttk.Button(entry_frame, text="Add",
-                   command=lambda: self.data_manager.add_to_list(word_var, detail_var, self.data_manager.lists[key], lb)).grid(row=0, column=2, padx=(2,0))
-
-        lb = tk.Listbox(lf, height=3)
-        lb.grid(row=1, column=0, sticky="ew", pady=2)
+        lb.grid(row=4, column=0, sticky="ew", pady=2)
         lb.bind("<Double-1>", lambda e: self.data_manager.delete_from_list(lb, self.data_manager.lists[key]))
 
+        self._toggle_issue(issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var)
         return row + 1
+
+    def _toggle_issue(self, issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var):
+        state = "normal" if issue_var.get() == "Yes" else "disabled"
+        count_state = "normal" if issue_var.get() == "Yes" else "disabled"
+        for widget in word_frame.winfo_children():
+            widget.config(state=state)
+        cb.config(state=state)
+        detail_entry.config(state=state if preset_var.get() == "Custom (write below)" else "disabled")
+        lb.config(state=state)
+        for widget in issue_frame.winfo_children()[2:]:  # Single/Multiple radiobuttons
+            widget.config(state=count_state)
+        if state == "disabled":
+            count_var.set("Single")
+            for widget in word_frame.winfo_children():
+                if isinstance(widget, ttk.Entry):
+                    widget.delete(0, tk.END)
+
+    def _toggle_count(self, count_var, word_frame, cb, detail_entry, lb):
+        state = "normal" if count_var.get() in ["Single", "Multiple"] else "disabled"
+        for widget in word_frame.winfo_children():
+            widget.config(state=state)
+        cb.config(state=state)
+        detail_entry.config(state=state if cb.get() == "Custom (write below)" else "disabled")
+        lb.config(state=state)
 
     def _score_section(self, parent, row, col):
         lf = ttk.LabelFrame(parent, text="Score Selection", padding=4)
@@ -256,7 +177,7 @@ class QAFeedbackApp:
         lf.columnconfigure(0, weight=1)
 
         self.data_manager.vars["score"] = tk.StringVar(value="5/5")
-        cb = ttk.Combobox(lf, values=["5/5", "4/5", "3/5", "2/5"], textvariable=self.data_manager.vars["score"], state="readonly")
+        cb = ttk.Combobox(lf, values=["5/5", "4/5", "3/5", "2/5", "2/5 + SBQ (Lokasyon hatalı)", "2/5 + SBQ (Doğal değil)", "1/5"], textvariable=self.data_manager.vars["score"], state="readonly")
         cb.grid(row=0, column=0, sticky="ew", pady=2)
 
         return row + 1

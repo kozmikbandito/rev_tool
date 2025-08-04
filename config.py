@@ -2,12 +2,36 @@
 FONT = ("Segoe UI", 9)
 COLPAD = 6
 
+# Kategori hataları için hazır mesajlar
+CATEGORY_PRESETS = [
+    "Seçilen konum, videodaki görsellerle uyuşmuyor.",
+    "Kategori yanlış seçilmiş, indoor yerine outdoor olmalıydı.",
+    "Kategori yanlış seçilmiş, outdoor yerine indoor olmalıydı.",
+    "Custom (write below)"
+]
+
+# Gürültü seviyesi hataları için hazır mesajlar
+NOISE_PRESETS = [
+    "Gürültü seviyesi TASK UI ile uyuşmuyor.",
+    "Ses seviyesi yanlış değerlendirilmiş, daha yüksek olmalıydı.",
+    "Ses seviyesi yanlış değerlendirilmiş, daha düşük olmalıydı.",
+    "Custom (write below)"
+]
+
 # Noktalama için hazır hata mesajları
 PUNCT_PRESETS = [
     "konuşma sırasında kısa bir duraksama olmadığı için, transcriptte de virgül olmamalıydı.",
     "konuşma sırasında min bir saniyelik bir duraksama olmadığı için, transcriptte de elipsis olmamalıydı.",
     "konuşma sırasında bu sözcükten sonra kısa bir duraksama olduğu için, transcriptte de virgül eklenmeliydi.",
     "konuşma sırasında bu sözcükten sonra min bir saniyelik bir duraksama olduğu için, transcriptte de elipsis eklenmeliydi.",
+    "Custom (write below)"
+]
+
+# Yazım için hazır hata mesajları
+SPELL_PRESETS = [
+    "Bu sözcük yanlış yazılmış.",
+    "Büyük/küçük harf kullanımı hatalı.",
+    "Yazım hatası, doğru kelime kullanılmalıydı.",
     "Custom (write below)"
 ]
 
@@ -37,7 +61,17 @@ FEEDBACK_TEMPLATES = {
     },
     "2/5": {
         "intro": "Thanks for your effort! There are some critical issues to fix.",
-        "issues": "The following issues led to sending the task back to queue:",
+        "issues": "The following issues need attention:",
         "outro": "Don't worry, just focus on these points and you'll improve quickly!"
+    },
+    "2/5 + SBQ": {
+        "intro": "Thanks for your effort! Some critical issues require sending the task back to queue.",
+        "issues": "The following issues led to sending the task back to queue:",
+        "outro": "Focus on these areas, and you'll get it right next time!"
+    },
+    "1/5": {
+        "intro": "Thanks for submitting! The task appears to be spam or significantly off-target.",
+        "issues": "The following issues were identified:",
+        "outro": "Please review the guidelines carefully and try again!"
     }
 }
