@@ -5,7 +5,7 @@ from data_manager import DataManager
 from feedback_generator import FeedbackGenerator
 
 class ScrollableFrame(ttk.Frame):
-    """Dikey kaydırılabilir çerçeve."""
+    """Vertically scrollable frame."""
     def __init__(self, container):
         super().__init__(container)
         canvas = tk.Canvas(self, highlightthickness=0)
@@ -38,7 +38,7 @@ class QAFeedbackApp:
         self._build_ui()
 
     def _apply_font_to_app(self):
-        """Uygulamaya font uygula."""
+        """Apply font to application."""
         self.root.option_add("*TLabel*Font", FONT)
         self.root.option_add("*TButton*Font", FONT)
         self.root.option_add("*TEntry*Font", FONT)
@@ -54,22 +54,22 @@ class QAFeedbackApp:
         form.columnconfigure(1, weight=1, uniform="col")
         form.columnconfigure(2, weight=1, uniform="col")
 
-        # Sol sütun
+        # Left column
         r0 = 0
         r0 = self._issue_section(form, r0, 0, "Category Issues", "category", CATEGORY_PRESETS)
         r0 = self._issue_section(form, r0, 0, "Noise Level Issues", "noise", NOISE_PRESETS)
 
-        # Orta sütun
+        # Middle column
         r1 = 0
         r1 = self._issue_section(form, r1, 1, "Punctuation Issues", "punct", PUNCT_PRESETS)
         r1 = self._issue_section(form, r1, 1, "Spelling Issues", "spell", SPELL_PRESETS)
         r1 = self._issue_section(form, r1, 1, "Word Issues", "word_issues", WORD_PRESETS)
 
-        # Sağ sütun
+        # Right column
         r2 = 0
         r2 = self._score_section(form, r2, 2)
 
-        # Satır hizalama
+        # Row alignment
         max_rows = max(r0, r1, r2)
         for i in range(max_rows):
             if i >= r0:
@@ -79,7 +79,7 @@ class QAFeedbackApp:
             if i >= r2:
                 ttk.Frame(form).grid(row=i, column=2)
 
-        # Ek notlar
+        # Additional notes
         notes = ttk.LabelFrame(form, text="Additional Notes", padding=4)
         notes.grid(row=max_rows, column=0, columnspan=3, sticky="ew", pady=4)
         notes.columnconfigure(0, weight=1)
@@ -95,24 +95,19 @@ class QAFeedbackApp:
         lf.columnconfigure(0, weight=1)
 
         issue_var = self.data_manager.vars[f"{key}_issue"]
-        count_var = self.data_manager.vars[f"{key}_count"]
         word_var = tk.StringVar()
         preset_var = tk.StringVar(value=presets[0])
         detail_var = tk.StringVar()
 
-        # Evet/Hayır ve Tek/Çoklu seçim
+        # Yes/No selection
         issue_frame = ttk.Frame(lf)
         issue_frame.grid(row=0, column=0, sticky="ew")
         ttk.Radiobutton(issue_frame, text="Yes", value="Yes", variable=issue_var,
-                        command=lambda: self._toggle_issue(issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var)).pack(side="left")
+                        command=lambda: self._toggle_issue(issue_var, word_frame, cb, detail_entry, lb, preset_var)).pack(side="left")
         ttk.Radiobutton(issue_frame, text="No", value="No", variable=issue_var,
-                        command=lambda: self._toggle_issue(issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var)).pack(side="left", padx=10)
-        ttk.Radiobutton(issue_frame, text="Single", value="Single", variable=count_var,
-                        command=lambda: self._toggle_count(count_var, word_frame, cb, detail_entry, lb)).pack(side="left")
-        ttk.Radiobutton(issue_frame, text="Multiple", value="Multiple", variable=count_var,
-                        command=lambda: self._toggle_count(count_var, word_frame, cb, detail_entry, lb)).pack(side="left")
+                        command=lambda: self._toggle_issue(issue_var, word_frame, cb, detail_entry, lb, preset_var)).pack(side="left", padx=10)
 
-        # Kelime girişi ve ekleme butonu
+        # Word input and add button
         word_frame = ttk.Frame(lf)
         word_frame.grid(row=1, column=0, sticky="ew")
         word_frame.columnconfigure(0, weight=1)
@@ -120,7 +115,7 @@ class QAFeedbackApp:
         ttk.Button(word_frame, text="Add",
                    command=lambda: self.data_manager.add_issue(word_var, preset_var, detail_var, lb, key)).pack(side="right", padx=(4,0))
 
-        # Hazır seçenekler
+        # Preset options
         cb = ttk.Combobox(lf, values=presets, textvariable=preset_var, state="readonly")
         cb.grid(row=2, column=0, sticky="ew", pady=2)
         detail_entry = ttk.Entry(lf, textvariable=detail_var)
@@ -138,37 +133,25 @@ class QAFeedbackApp:
         cb.bind("<<ComboboxSelected>>", preset_changed)
         self._create_tooltip(cb, preset_var)
 
-        # Hata listesi
+        # Issue list
         lb = tk.Listbox(lf, height=3)
         lb.grid(row=4, column=0, sticky="ew", pady=2)
         lb.bind("<Double-1>", lambda e: self.data_manager.delete_from_list(lb, self.data_manager.lists[key]))
 
-        self._toggle_issue(issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var)
+        self._toggle_issue(issue_var, word_frame, cb, detail_entry, lb, preset_var)
         return row + 1
 
-    def _toggle_issue(self, issue_var, count_var, word_frame, cb, detail_entry, lb, issue_frame, preset_var):
+    def _toggle_issue(self, issue_var, word_frame, cb, detail_entry, lb, preset_var):
         state = "normal" if issue_var.get() == "Yes" else "disabled"
-        count_state = "normal" if issue_var.get() == "Yes" else "disabled"
         for widget in word_frame.winfo_children():
             widget.config(state=state)
         cb.config(state=state)
         detail_entry.config(state=state if preset_var.get() == "Custom (write below)" else "disabled")
         lb.config(state=state)
-        for widget in issue_frame.winfo_children()[2:]:  # Single/Multiple radiobuttons
-            widget.config(state=count_state)
         if state == "disabled":
-            count_var.set("Single")
             for widget in word_frame.winfo_children():
                 if isinstance(widget, ttk.Entry):
                     widget.delete(0, tk.END)
-
-    def _toggle_count(self, count_var, word_frame, cb, detail_entry, lb):
-        state = "normal" if count_var.get() in ["Single", "Multiple"] else "disabled"
-        for widget in word_frame.winfo_children():
-            widget.config(state=state)
-        cb.config(state=state)
-        detail_entry.config(state=state if cb.get() == "Custom (write below)" else "disabled")
-        lb.config(state=state)
 
     def _score_section(self, parent, row, col):
         lf = ttk.LabelFrame(parent, text="Score Selection", padding=4)
@@ -177,7 +160,7 @@ class QAFeedbackApp:
         lf.columnconfigure(0, weight=1)
 
         self.data_manager.vars["score"] = tk.StringVar(value="5/5")
-        cb = ttk.Combobox(lf, values=["5/5", "4/5", "3/5", "2/5", "2/5 + SBQ (Lokasyon hatalı)", "2/5 + SBQ (Doğal değil)", "1/5"], textvariable=self.data_manager.vars["score"], state="readonly")
+        cb = ttk.Combobox(lf, values=["5/5", "4/5", "3/5", "2/5", "2/5 + SBQ (Wrong Location)", "2/5 + SBQ (Not Natural)", "1/5"], textvariable=self.data_manager.vars["score"], state="readonly")
         cb.grid(row=0, column=0, sticky="ew", pady=2)
 
         return row + 1
@@ -239,7 +222,7 @@ class QAFeedbackApp:
             return
         self.root.clipboard_clear()
         self.root.clipboard_append(txt)
-        messagebox.showinfo("Copied", "Feedback copied to clipboard.")
+        # Removed pop-up message
 
     def reset_form(self):
         self.root.destroy()

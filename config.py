@@ -1,48 +1,56 @@
-# Sabitler ve hazır metinler
+# Constants and preset texts
 FONT = ("Segoe UI", 9)
 COLPAD = 6
 
-# Kategori hataları için hazır mesajlar
+# Category error preset messages
 CATEGORY_PRESETS = [
-    "Seçilen konum, videodaki görsellerle uyuşmuyor.",
-    "Kategori yanlış seçilmiş, indoor yerine outdoor olmalıydı.",
-    "Kategori yanlış seçilmiş, outdoor yerine indoor olmalıydı.",
+    "Main category is incorrect",
+    "Subcategory is incorrect",
     "Custom (write below)"
 ]
 
-# Gürültü seviyesi hataları için hazır mesajlar
+# Noise level error preset messages
 NOISE_PRESETS = [
-    "Gürültü seviyesi TASK UI ile uyuşmuyor.",
-    "Ses seviyesi yanlış değerlendirilmiş, daha yüksek olmalıydı.",
-    "Ses seviyesi yanlış değerlendirilmiş, daha düşük olmalıydı.",
+    "Noise level was assessed incorrectly, should have been higher.",
+    "Noise level was assessed incorrectly, should have been lower.",
     "Custom (write below)"
 ]
 
-# Noktalama için hazır hata mesajları
+# Punctuation preset error messages
 PUNCT_PRESETS = [
-    "konuşma sırasında kısa bir duraksama olmadığı için, transcriptte de virgül olmamalıydı.",
-    "konuşma sırasında min bir saniyelik bir duraksama olmadığı için, transcriptte de elipsis olmamalıydı.",
-    "konuşma sırasında bu sözcükten sonra kısa bir duraksama olduğu için, transcriptte de virgül eklenmeliydi.",
-    "konuşma sırasında bu sözcükten sonra min bir saniyelik bir duraksama olduğu için, transcriptte de elipsis eklenmeliydi.",
+    "since there was no brief pause during speech, there should not be a comma in the transcript.",
+    "since there was no pause of at least one second during speech, there should not be an ellipsis in the transcript.",
+    "since there was a brief pause after this word during speech, a comma should have been added to the transcript.",
+    "since there was a pause of at least one second after this word during speech, an ellipsis should have been added to the transcript.",
     "Custom (write below)"
 ]
 
-# Yazım için hazır hata mesajları
+# Spelling preset error messages
 SPELL_PRESETS = [
-    "Bu sözcük yanlış yazılmış.",
-    "Büyük/küçük harf kullanımı hatalı.",
-    "Yazım hatası, doğru kelime kullanılmalıydı.",
+    "This word is misspelled.",
+    "Capitalization usage is incorrect.",
+    "Spelling error, the correct word should have been used.",
     "Custom (write below)"
 ]
 
-# Kelime sorunları için hazır hata mesajları
+# Word issues preset error messages
 WORD_PRESETS = [
-    "bu sözcük konuşma sırasında söylenmesine rağmen, transcriptte yer almıyor.",
-    "bu sözcük konuşma sırasında söylenmemesine rağmen, transcriptte yer alıyor.",
+    "this word was spoken during the conversation but is not included in the transcript.",
+    "this word was not spoken during the conversation but appears in the transcript.",
     "Custom (write below)"
 ]
 
-# Puan tabanlı geri bildirim metinleri
+# SBQ (Send Back to Queue) reasons
+SBQ_REASONS = [
+    "Not Natural (Reading) - Sounds like reading from text",
+    "Not Natural (AI-like) - Contains AI-typical requests/conversations", 
+    "Wrong Location - Video location doesn't match selected category",
+    "Inappropriate Content - Contains harmful/offensive/NSFW content",
+    "Category Confusion - Task fits multiple categories, unclear classification",
+    "Custom (write below)"
+]
+
+# Score-based feedback templates (without SBQ options)
 FEEDBACK_TEMPLATES = {
     "5/5": {
         "intro": "Great job! Your recording and transcription are spot-on!",
@@ -64,14 +72,28 @@ FEEDBACK_TEMPLATES = {
         "issues": "The following issues need attention:",
         "outro": "Don't worry, just focus on these points and you'll improve quickly!"
     },
-    "2/5 + SBQ": {
-        "intro": "Thanks for your effort! Some critical issues require sending the task back to queue.",
-        "issues": "The following issues led to sending the task back to queue:",
-        "outro": "Focus on these areas, and you'll get it right next time!"
-    },
     "1/5": {
         "intro": "Thanks for submitting! The task appears to be spam or significantly off-target.",
         "issues": "The following issues were identified:",
         "outro": "Please review the guidelines carefully and try again!"
+    }
+}
+
+# SBQ-specific feedback templates
+SBQ_FEEDBACK_TEMPLATES = {
+    "Not Natural (Reading) - Sounds like reading from text": {
+        "message": "This task has been sent back to queue due to naturalness issues. The speech sounds like it's being read from a text rather than natural conversation. For future submissions, please ensure your speech sounds conversational and spontaneous."
+    },
+    "Not Natural (AI-like) - Contains AI-typical requests/conversations": {
+        "message": "This task has been sent back to queue due to naturalness issues. The content contains AI-typical requests (like asking for lists, pros/cons, explanations) that don't represent natural human conversation. Please focus on genuine, spontaneous dialogue."
+    },
+    "Wrong Location - Video location doesn't match selected category": {
+        "message": "This task has been sent back to queue due to location mismatch. The location shown in the video evidence does not match the selected category. Please ensure the video evidence accurately represents the chosen recording location."
+    },
+    "Inappropriate Content - Contains harmful/offensive/NSFW content": {
+        "message": "This task has been sent back to queue due to inappropriate content. The recording contains harmful, offensive, or NSFW material that violates our content guidelines. Please review the content policy before future submissions."
+    },
+    "Category Confusion - Task fits multiple categories, unclear classification": {
+        "message": "This task has been sent back to queue due to category ambiguity. The content could fit multiple categories, making classification unclear. Please ensure future recordings have clear, unambiguous category placement."
     }
 }

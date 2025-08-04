@@ -1,24 +1,56 @@
 import tkinter as tk
 from tkinter import messagebox
-from config import CATEGORY_PRESETS, NOISE_PRESETS, PUNCT_PRESETS, SPELL_PRESETS, WORD_PRESETS
+import json
+from config import CATEGORY_PRESETS, NOISE_PRESETS, PUNCT_PRESETS, SPELL_PRESETS, WORD_PRESETS, SBQ_REASONS
 
 class DataManager:
     def __init__(self):
         self.vars = {
             "category_issue": tk.StringVar(value="No"),
-            "category_count": tk.StringVar(value="Single"),
             "noise_issue": tk.StringVar(value="No"),
-            "noise_count": tk.StringVar(value="Single"),
             "punct_issue": tk.StringVar(value="No"),
-            "punct_count": tk.StringVar(value="Single"),
             "spell_issue": tk.StringVar(value="No"),
-            "spell_count": tk.StringVar(value="Single"),
             "word_issues_issue": tk.StringVar(value="No"),
-            "word_issues_count": tk.StringVar(value="Single"),
+            "sbq_issue": tk.StringVar(value="No"),
             "add_notes": tk.StringVar(),
-            "score": tk.StringVar(value="5/5")
+            "score": tk.StringVar(value="5/5"),
+            "json_content": tk.StringVar()
         }
-        self.lists = {"category": [], "noise": [], "punct": [], "spell": [], "word_issues": []}
+        self.lists = {"category": [], "noise": [], "punct": [], "spell": [], "word_issues": [], "sbq": []}
+        self.json_data = None
+
+    def parse_json(self):
+        """Parse the JSON content and extract relevant information."""
+        try:
+            json_text = self.vars["json_content"].get().strip()
+            if not json_text:
+                return None
+            
+            self.json_data = json.loads(json_text)
+            return self.json_data
+        except json.JSONDecodeError as e:
+            messagebox.showerror("JSON Error", f"Invalid JSON format: {str(e)}")
+            return None
+        except Exception as e:
+            messagebox.showerror("Error", f"Error parsing JSON: {str(e)}")
+            return None
+
+    def get_json_info(self):
+        """Extract useful information from parsed JSON."""
+        if not self.json_data:
+            return {}
+        
+        metadata = self.json_data.get("metadata", {})
+        
+        return {
+            "category": metadata.get("category", ""),
+            "subcategory": metadata.get("subcategory", ""),
+            "noise_level": metadata.get("noiseLevel", ""),
+            "transcription": metadata.get("transcription", ""),
+            "recording_location": metadata.get("distribution", {}).get("recordingLocation", ""),
+            "content_category": metadata.get("distribution", {}).get("category", ""),
+            "content_subcategory": metadata.get("distribution", {}).get("subcategory", "")
+        }
 
     def add_issue(self, word_var, preset_var, detail_var, lb, key):
         word = word_var.get().strip()
@@ -26,52 +58,69 @@ class DataManager:
             messagebox.showwarning("Warning", "Word/Phrase field cannot be empty.")
             return
         if preset_var.get() == "Custom (write below)":
-            det = detail_var.get().strip()
-            if not det:
+            detail = detail_var.get().strip()
+            if not detail:
                 messagebox.showwarning("Warning", "Please enter custom detail.")
                 return
         else:
-            det = preset_var.get()
-        self.lists[key].append((word, det))
-        lb.insert(tk.END, f"{word} – {det[:50]}{'...' if len(det) > 50 else ''}")
+            detail = preset_var.get()
+        self.lists[key].append((word, detail))
+        lb.insert(tk.END, f"{word} – {detail[:50]}{'...' if len(detail) > 50 else ''}")
         word_var.set("")
 
+    def add_sbq_issue(self, preset_var, detail_var, lb):
+        """Special method for adding SBQ issues."""
+        if preset_var.get() == "Custom (write below)":
+            detail = detail_var.get().strip()
+            if not detail:
+                messagebox.showwarning("Warning", "Please enter custom detail.")
+                return
+        else:
+            detail = preset_var.get()
+        
+        # For SBQ, we don't need a specific word, just the reason
+        self.lists["sbq"].append(("SBQ", detail))
+        lb.insert(tk.END, f"SBQ – {detail[:50]}{'...' if len(detail) > 50 else ''}")
+
     def delete_from_list(self, lb, target):
-        sel = lb.curselection()
-        if not sel:
+        selection = lb.curselection()
+        if not selection:
             return
-        idx = sel[0]
+        index = selection[0]
         if messagebox.askyesno("Delete", "Delete selected item?"):
-            lb.delete(idx)
-            target.pop(idx)
+            lb.delete(index)
+            target.pop(index)
 
     def collect_data(self):
         def format_issue(key, presets):
             issue_var = self.vars[f"{key}_issue"]
-            count_var = self.vars[f"{key}_count"]
             items = self.lists[key]
             if issue_var.get() == "No":
                 return "No issue"
             if not items:
                 return "Marked Yes but no issues added!"
             
-            if count_var.get() == "Single" or len(items) == 1:
-                word, det = items[0]
-                if det in presets[:-1]:
-                    # Punctuation için özel işleme
-                    if key == "punct":
-                        return det.replace("bu sözcükten sonra", f"“{word}” sözcüğünden sonra")
-                    return det.replace("Bu sözcük", f"“{word}”").replace("Bu konum", f"“{word}”").replace("Bu ses seviyesi", f"“{word}”").replace("İçeriğin", f"“{word}” için içeriğin")
-                return det
-            else:
-                words = [w for w, _ in items]
-                det = items[0][1]  # Aynı hata mesajını kullan
-                if det in presets[:-1]:
-                    words_str = ", ".join(f"“{w}”" for w in words[:-1]) + (f" ve “{words[-1]}”" if len(words) > 1 else f"“{words[0]}”")
-                    if key == "punct":
-                        return det.replace("bu sözcükten sonra", f"{words_str} sözcüklerinden sonra")
-                    return det.replace("Bu sözcük", words_str).replace("Bu konum", words_str).replace("Bu ses seviyesi", words_str).replace("İçeriğin", f"{words_str} için içeriğin")
-                return "\n".join(f"- {w} – {d}" for w, d in items)
+            # Process single item
+            word, detail = items[0]
+            if detail in presets[:-1]:
+                # Special processing for punctuation
+                if key == "punct":
+                    return detail.replace("after this word", f'after "{word}"')
+                # Replace placeholders for other types
+                return detail.replace("This word", f'"{word}"').replace("This location", f'"{word}"').replace("This noise level", f'"{word}"').replace("this word", f'"{word}"')
+            return detail
+
+        def format_sbq_issue():
+            issue_var = self.vars["sbq_issue"]
+            items = self.lists["sbq"]
+            if issue_var.get() == "No":
+                return "No"
+            if not items:
+                return "Marked Yes but no SBQ reason added!"
+            
+            # Return the SBQ reason
+            _, detail = items[0]
+            return detail
 
         return {
             "Category": format_issue("category", CATEGORY_PRESETS),
@@ -79,6 +128,8 @@ class DataManager:
             "Punctuation": format_issue("punct", PUNCT_PRESETS),
             "Spelling": format_issue("spell", SPELL_PRESETS),
             "Word_Issues": format_issue("word_issues", WORD_PRESETS),
+            "SBQ": format_sbq_issue(),
             "Notes": self.vars["add_notes"].get().strip() or "—",
-            "Score": self.vars["score"].get()
+            "Score": self.vars["score"].get(),
+            "JSON_Info": self.get_json_info()
         }
